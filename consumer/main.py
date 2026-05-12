@@ -24,7 +24,7 @@ def callback(ch, method, properties, body):
         event = data.get("event", "unknown")
         node_name = data.get("node_name", "unknown")
         timestamp = data.get("timestamp", "unknown")
-        print(f"EVENT: {event} | node: {node_name} | time: {timestamp}")
+        print(f"EVENT: {event} | node: {node_name} | time: {timestamp}", flush=True)
     except Exception as exc:
         logger.error("Failed to process message: %s", exc)
     finally:
@@ -32,32 +32,37 @@ def callback(ch, method, properties, body):
 
 
 def main():
-    url = os.environ.get("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672/")
-    for attempt in range(1, 11):
-        try:
-            connection = pika.BlockingConnection(pika.URLParameters(url))
-            break
-        except Exception as exc:
-            logger.warning(
-                "RabbitMQ not ready (attempt %d/10): %s", attempt, exc
-            )
-            if attempt < 10:
-                time.sleep(3)
-    else:
-        logger.error("Could not connect to RabbitMQ after 10 attempts")
-        return
-
-    channel = connection.channel()
-    channel.queue_declare(queue="node_events", durable=False)
-    channel.basic_consume(
-        queue="node_events", on_message_callback=callback
-    )
-    print(" [*] Waiting for messages. To exit press CTRL+C")
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     try:
-        channel.start_consuming()
-    except KeyboardInterrupt:
-        channel.stop_consuming()
-    connection.close()
+        url = os.environ.get("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672/")
+        for attempt in range(1, 11):
+            try:
+                connection = pika.BlockingConnection(pika.URLParameters(url))
+                break
+            except Exception as exc:
+                logger.warning(
+                    "RabbitMQ not ready (attempt %d/10): %s", attempt, exc
+                )
+                if attempt < 10:
+                    time.sleep(3)
+        else:
+            logger.error("Could not connect to RabbitMQ after 10 attempts")
+            return
+
+        channel = connection.channel()
+        channel.queue_declare(queue="node_events", durable=False)
+        channel.basic_consume(
+            queue="node_events", on_message_callback=callback
+        )
+        print(" [*] Waiting for messages. To exit press CTRL+C", flush=True)
+        try:
+            channel.start_consuming()
+        except KeyboardInterrupt:
+            channel.stop_consuming()
+        connection.close()
+    except Exception as exc:
+        print(f"Consumer crashed: {exc}", flush=True)
+        raise
 
 
 if __name__ == "__main__":

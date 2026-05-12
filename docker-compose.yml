@@ -8,6 +8,11 @@ services:
       POSTGRES_DB: nodes_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d nodes_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   rabbitmq:
     image: rabbitmq:3-management
@@ -23,8 +28,10 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/nodes_db
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
     depends_on:
-      - db
-      - rabbitmq
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
 
   consumer:
     build: ./consumer

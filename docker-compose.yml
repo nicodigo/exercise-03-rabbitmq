@@ -1,7 +1,37 @@
-# TODO: Define 4 services: db, api, rabbitmq, consumer
-#
-# Requirements:
-# - db: postgres:17-alpine
-# - rabbitmq: rabbitmq:3-management, ports 5672 and 15672
-# - api: depends_on db and rabbitmq
-# - consumer: depends_on rabbitmq
+services:
+
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: nodes_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  api:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/nodes_db
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      - db
+      - rabbitmq
+
+  consumer:
+    build: ./consumer
+    environment:
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      - rabbitmq
+
+volumes:
+  postgres_data:

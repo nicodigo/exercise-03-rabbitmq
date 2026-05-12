@@ -1,7 +1,12 @@
-# TODO: Write Dockerfile for the consumer
-#
-# Requirements:
-# - Base image: python:3.14-slim
-# - Install pika from requirements.txt
-# - Non-root USER
-# - Start: python main.py
+# Dockerfile for the RabbitMQ consumer service
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+CMD ["python", "main.py"]
